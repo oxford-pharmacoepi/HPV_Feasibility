@@ -39,6 +39,9 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 
+# RData - not to upload results to github
+*.RData
+
 # pkgdown site
 docs/
 
