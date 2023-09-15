@@ -41,6 +41,7 @@ vignettes/*.pdf
 
 # RData - not to upload results to github
 *.RData
+Results/*
 
 # pkgdown site
 docs/
