@@ -66,7 +66,7 @@ Age_profile <- cdm$results_dx %>%
   tally() %>%  collect()  %>% 
   mutate(n = case_when(as.integer(n) < 6 ~ 0,
                        TRUE ~ as.integer(n) ))
-Age_profile_named <- cohort_count %>% left_join(cohort_set_cdm)
+Age_profile_named <- Age_profile %>% left_join(cohort_set_cdm)
 toc(log = TRUE)
 
 
