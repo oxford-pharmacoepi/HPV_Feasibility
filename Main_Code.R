@@ -1,13 +1,3 @@
- rm(list=ls())
-
-## Install Needed Packages
-# install.packages("CDMConnector")
-# install.packages("DBI")
-# install.packages("dbplyr")
-# install.packages("dplyr")
-# install.packages("PatientProfiles")
-# install.packages("here")
-# install.packages("tictoc")
 
 ### Open libraries
 library(CDMConnector)
@@ -18,55 +8,21 @@ library(PatientProfiles)
 library(here)
 library(tictoc)
 
-tic.clearlog()
-tic.clear()
-tic(msg = "total time run: ")
-
-##### Connect to database using CDM COnnector ########
-tic(msg = "Connect to database")
-
-# server_dbi <- Sys.getenv("DB_SERVER_DBI_Pharmetrics") 
-server_dbi <- Sys.getenv("DB_SERVER_DBI_CPRDgold") 
-user <- Sys.getenv("DB_USER") 
-port <- Sys.getenv("DB_PORT") 
-host <- Sys.getenv("DB_HOST")
-
-db <- dbConnect(RPostgres::Postgres(), 
-                dbname = server_dbi, 
-                port = port, 
-                host = host, 
-                user = user, 
-                password = Sys.getenv("DB_PASSWORD") ) 
-
-cdm <- cdm_from_con(con = db,
-                               cdm_schema = "public",
-                               write_schema = "results")
-
-
-toc(log = TRUE)
-
-
-
-##### Options and set-up:  directories and settings ######
-tic(msg = "Settings ")
-
-cohort_json_dir <- here("Cohorts/")
-cohorts_name <- "feasibility_hpv"
-vaccine_codes <- read.csv(here("HPV_vac.csv")) %>% select(concept.CONCEPT_ID)
-database_name <- "CPRD_Gold"
-toc(log = TRUE)
-
-
-
-
-
-
 
 
 ############### Feasibility study starts here ######################
 
+tic.clearlog()
+tic.clear()
+tic(msg = "total time run: ")
 
 ####### Step 1: Get cohorts and generate them #######
+tic(msg = "Load vaccine concept ids")
+cohorts_name <- "feasibility_hpv"   #### no need to change 
+vaccine_codes <- read.csv(here("HPV_vac.csv")) %>% select(concept.CONCEPT_ID) 
+toc()
+
+
 
 tic(msg = "Generate Cohort Set")
 
@@ -105,15 +61,12 @@ cdm$results_dx <- cdm[[cohorts_name]]
 Age_profile <- cdm$results_dx %>%
    addDemographics(cdm, age=T, sex= T, ageGroup = list(
      "age_group" =
-       list(
-         "0 to 11" = c(0, 11),
-         "12 to 18" = c(12, 18),
-         "19 to 25" = c(19, 25),
-         ">150" = c(26, 150)
-       ))) %>% group_by(cohort_definition_id, age_group, sex) %>% tally() %>%  collect()  %>% 
+       list(c(0, 11),c(12, 18), c(19, 25),c(26, 150) ))) %>% 
+  group_by(cohort_definition_id, age_group, sex) %>% 
+  tally() %>%  collect()  %>% 
   mutate(n = case_when(as.integer(n) < 6 ~ 0,
                        TRUE ~ as.integer(n) ))
-
+Age_profile_named <- cohort_count %>% left_join(cohort_set_cdm)
 toc(log = TRUE)
 
 
@@ -151,15 +104,16 @@ tic_log <- tic.log(format = TRUE)
 
 ############# save.image ############
 rm(cdm, 
-   db, vaccine_codes, codes,
-   json2, cohortExpresion, original_codes_counts,
-   recommended_codes, recommended_codes_counts,
-   cohort_count, cohort_attrition, cohort_set)
+   db, vaccine_codes,
+   cohort_count, cohort_set)
 rm( cohort_json_dir, host, port, server_dbi, user)
  rm(list = ls.str(mode = 'numeric'))
 
 
 
-save.image(file = here(paste0(cohorts_name, database_name, format(Sys.time(), "_%Y_%m_%d") , ".RData")))
+save.image(file = here("Results",paste0(cohorts_name, database_name, format(Sys.time(), "_%Y_%m_%d") , ".RData")))
 
-
+write.csv(Age_profile_named, here("Results",paste0(cohorts_name, database_name, format(Sys.time(), "_%Y_%m_%d") , "Age_Profile", ".csv")))
+write.csv(cohort_count_named, here("Results",paste0(cohorts_name, database_name, format(Sys.time(), "_%Y_%m_%d") , "Cohort_count", ".csv")))
+write.csv(Index_events_drugs, here("Results",paste0(cohorts_name, database_name, format(Sys.time(), "_%Y_%m_%d") , "Source_codes", ".csv")))
+write.csv(tic_log, here("Results",paste0(cohorts_name, database_name, format(Sys.time(), "_%Y_%m_%d") , "tic_log", ".csv")))
